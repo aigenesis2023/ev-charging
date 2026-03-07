@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EV Charging</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --blue:#38bdf8; --blue2:#7dd3fc; --bglow:rgba(56,189,248,0.35);
+  --panel:rgba(6,16,36,0.85); --border:rgba(56,189,248,0.14);
+  --text:#ddeeff; --dim:rgba(200,220,255,0.45);
+  --green:#4ade80; --gglow:rgba(74,222,128,0.38);
+  --yellow:#facc15; --orange:#fb923c; --red:#ef4444;
+}
+
+html, body {
+  width:100%; height:100%;
+  overflow:hidden;
+  background:transparent;
+  font-family:'DM Sans',sans-serif;
+  color:var(--text);
+}
+
+@keyframes fadeUp  { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+@keyframes slideIn { from{opacity:0;transform:translateX(14px)} to{opacity:1;transform:translateX(0)} }
+
+.content {
+  display:grid;
+  grid-template-columns:1fr 300px;
+  height:100%;
+  padding:20px;
+  gap:16px;
+}
+
+/* ── LEFT ── */
+.left { display:flex; flex-direction:column; gap:14px; overflow:hidden; }
+
+.chargers {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
+  animation:fadeUp .5s ease both;
+}
+.charger-btn {
+  background:rgba(56,189,248,0.04); border:1px solid rgba(56,189,248,0.16); border-radius:8px;
+  padding:12px 6px; cursor:pointer; transition:all .2s ease;
+  display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center;
+  position:relative; overflow:hidden;
+}
+.charger-btn::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg,rgba(56,189,248,.08),transparent); opacity:0; transition:opacity .2s;
+}
+.charger-btn:hover { border-color:rgba(56,189,248,.35); transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.35); }
+.charger-btn:hover::before { opacity:1; }
+.charger-btn.active {
+  border-color:var(--blue); background:rgba(56,189,248,.1);
+  box-shadow:0 0 18px rgba(56,189,248,.18),0 6px 20px rgba(0,0,0,.35);
+}
+.charger-btn.active::before { opacity:1; }
+.cb-icon { font-size:16px; line-height:1; }
+.cb-kw {
+  font-family:'Orbitron',monospace; font-size:12px; font-weight:700;
+  color:var(--blue2); letter-spacing:.03em; transition:color .2s;
+}
+.charger-btn.active .cb-kw { color:#fff; text-shadow:0 0 10px var(--bglow); }
+.cb-type  { font-size:9px; color:var(--dim); font-weight:300; line-height:1.3; }
+.cb-badge { font-size:8.5px; font-weight:500; padding:2px 7px; border-radius:10px; letter-spacing:.04em; margin-top:1px; }
+.cb-badge.slow   { background:rgba(239,68,68,.15);  color:var(--red);    border:1px solid rgba(239,68,68,.25); }
+.cb-badge.medium { background:rgba(251,146,60,.15); color:var(--orange); border:1px solid rgba(251,146,60,.25); }
+.cb-badge.fast   { background:rgba(250,204,21,.15); color:var(--yellow); border:1px solid rgba(250,204,21,.25); }
+.cb-badge.rapid  { background:rgba(74,222,128,.12); color:var(--green);  border:1px solid rgba(74,222,128,.25); }
+
+/* Progress card */
+.charge-progress-card {
+  background:var(--panel); border:1px solid var(--border); border-radius:10px;
+  padding:16px 18px; backdrop-filter:blur(16px); flex:1;
+  box-shadow:0 0 0 1px rgba(56,189,248,.03),inset 0 1px 0 rgba(56,189,248,.07),0 14px 36px rgba(0,0,0,.4);
+  display:flex; flex-direction:column; gap:14px;
+  animation:fadeUp .5s ease .1s both;
+}
+.cp-row-top { display:flex; align-items:center; justify-content:space-between; }
+.cp-kwh { display:flex; align-items:baseline; gap:5px; }
+.cp-kwh-num {
+  font-family:'Orbitron',monospace; font-size:36px; font-weight:900;
+  color:#fff; line-height:1; transition:color .5s; letter-spacing:-0.02em;
+}
+.cp-kwh-unit { font-family:'Orbitron',monospace; font-size:13px; font-weight:700; color:var(--blue); letter-spacing:.04em; }
+.cp-kwh-of   { font-size:11px; color:var(--dim); font-weight:300; margin-left:2px; }
+
+.cp-clock {
+  position:relative; width:66px; height:66px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.cp-clock-ring { position:absolute; inset:0; width:100%; height:100%; }
+.cp-clock-inner { display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1; }
+.cp-clock-num { font-family:'Orbitron',monospace; font-size:11px; font-weight:700; color:#fff; line-height:1; text-align:center; }
+.cp-clock-lbl { font-size:7px; color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:2px; }
+
+.cp-bar-wrap { display:flex; flex-direction:column; gap:6px; }
+.cp-bar-track {
+  height:12px; background:rgba(56,189,248,0.06); border-radius:6px;
+  overflow:hidden; border:1px solid rgba(56,189,248,0.1);
+}
+.cp-bar-fill {
+  height:100%; width:0%; border-radius:6px; position:relative;
+  background:linear-gradient(90deg,#ef4444 0%,#fb923c 25%,#facc15 55%,#4ade80 100%);
+  transition:width .08s linear;
+}
+.cp-bar-fill::after {
+  content:''; position:absolute; top:0; right:0; bottom:0; width:28px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.3));
+  border-radius:0 6px 6px 0;
+}
+.cp-bar-labels { display:flex; justify-content:space-between; font-size:8.5px; color:rgba(200,220,255,.28); }
+.cp-status { font-size:11px; color:var(--dim); font-weight:300; line-height:1.6; transition:opacity .3s; }
+.cp-status strong { color:var(--text); font-weight:500; }
+
+/* ── RIGHT ── */
+.right {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:12px; animation:slideIn .5s ease .05s both;
+}
+.battery-title {
+  font-family:'Orbitron',monospace; font-size:8.5px; font-weight:700;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--dim);
+}
+.battery-wrap { position:relative; width:130px; filter:drop-shadow(0 16px 40px rgba(0,0,0,.6)); }
+.battery-wrap svg { width:100%; display:block; }
+
+.battery-pct {
+  font-family:'Orbitron',monospace; font-size:32px; font-weight:900;
+  color:#fff; text-align:center; letter-spacing:.04em; transition:color .5s; line-height:1;
+}
+.battery-pct sup { font-size:14px; color:var(--dim); vertical-align:super; margin-left:1px; }
+
+.rate-card {
+  width:100%; background:var(--panel); border:1px solid var(--border);
+  border-radius:8px; padding:10px 12px; backdrop-filter:blur(14px);
+}
+.rate-label { font-size:8.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); font-weight:500; margin-bottom:7px; }
+.rate-track  { height:5px; background:rgba(56,189,248,.08); border-radius:3px; overflow:hidden; }
+.rate-fill   { height:100%; border-radius:3px; width:0%; transition:width .8s cubic-bezier(.34,1.56,.64,1),background .5s; }
+.rate-ticks  { display:flex; justify-content:space-between; margin-top:5px; }
+.rate-tick   { font-size:8px; color:var(--dim); letter-spacing:.02em; transition:color .3s; }
+.rate-tick.on { color:var(--blue); font-weight:500; }
+</style>
+</head>
+<body>
+
+<div class="content">
+
+  <div class="left">
+    <div class="chargers">
+      <div class="charger-btn" onclick="selectCharger(0)">
+        <div class="cb-icon">🔌</div>
+        <div class="cb-kw">2.4 kW</div>
+        <div class="cb-type">3-pin domestic socket</div>
+        <div class="cb-badge slow">Slow</div>
+      </div>
+      <div class="charger-btn" onclick="selectCharger(1)">
+        <div class="cb-icon">⚡</div>
+        <div class="cb-kw">7.4 kW</div>
+        <div class="cb-type">Home wallbox</div>
+        <div class="cb-badge medium">Fast</div>
+      </div>
+      <div class="charger-btn" onclick="selectCharger(2)">
+        <div class="cb-icon">⚡⚡</div>
+        <div class="cb-kw">22 kW</div>
+        <div class="cb-type">AC public charger</div>
+        <div class="cb-badge fast">Rapid</div>
+      </div>
+      <div class="charger-btn" onclick="selectCharger(3)">
+        <div class="cb-icon">🔋</div>
+        <div class="cb-kw">80 kW</div>
+        <div class="cb-type">DC rapid charger</div>
+        <div class="cb-badge rapid">Ultra</div>
+      </div>
+    </div>
+
+    <div class="charge-progress-card">
+      <div class="cp-row-top">
+        <div class="cp-kwh">
+          <span class="cp-kwh-num" id="kwhNum">0.0</span>
+          <span class="cp-kwh-unit">kWh</span>
+          <span class="cp-kwh-of">of 50</span>
+        </div>
+        <div class="cp-clock">
+          <svg class="cp-clock-ring" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(56,189,248,0.1)" stroke-width="3"/>
+            <circle id="clockRing" cx="24" cy="24" r="20" fill="none" stroke="var(--blue)" stroke-width="3"
+              stroke-dasharray="125.7" stroke-dashoffset="125.7"
+              stroke-linecap="round" transform="rotate(-90 24 24)"/>
+          </svg>
+          <div class="cp-clock-inner">
+            <span class="cp-clock-num" id="clockNum">—</span>
+            <span class="cp-clock-lbl" id="clockLbl">select</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cp-bar-wrap">
+        <div class="cp-bar-track">
+          <div class="cp-bar-fill" id="cpBarFill"></div>
+        </div>
+        <div class="cp-bar-labels">
+          <span>0</span><span>12.5</span><span>25</span><span>37.5</span><span>50 kWh</span>
+        </div>
+      </div>
+
+      <div class="cp-status" id="cpStatus">Select a charging rate above to begin the simulation.</div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="battery-title">50 kWh Battery</div>
+
+    <div class="battery-wrap">
+      <svg viewBox="0 0 160 260" xmlns="http://www.w3.org/2000/svg">
+        <rect x="56" y="2" width="48" height="18" rx="4" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+        <rect x="4" y="16" width="152" height="240" rx="9" fill="rgba(5,12,28,0.92)" stroke="rgba(255,255,255,0.5)" stroke-width="2.5"/>
+        <rect id="bseg1" x="10" y="208" width="140" height="43" rx="3" fill="transparent"/>
+        <rect id="bseg2" x="10" y="161" width="140" height="43" rx="3" fill="transparent"/>
+        <rect id="bseg3" x="10" y="114" width="140" height="43" rx="3" fill="transparent"/>
+        <rect id="bseg4" x="10" y="67"  width="140" height="43" rx="3" fill="transparent"/>
+        <rect id="bseg5" x="10" y="22"  width="140" height="41" rx="3" fill="transparent"/>
+        <line x1="10" y1="251" x2="150" y2="251" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+        <line x1="10" y1="204" x2="150" y2="204" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+        <line x1="10" y1="157" x2="150" y2="157" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+        <line x1="10" y1="110" x2="150" y2="110" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+        <line x1="10" y1="63"  x2="150" y2="63"  stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+        <text id="boltTxt" x="80" y="142" text-anchor="middle" dominant-baseline="middle"
+          font-size="36" fill="rgba(255,255,255,0)" style="transition:fill .4s">⚡</text>
+      </svg>
+    </div>
+
+    <div class="battery-pct" id="battPct"><span id="pctNum">0</span><sup>%</sup></div>
+
+    <div class="rate-card">
+      <div class="rate-label">Charge rate</div>
+      <div class="rate-track"><div class="rate-fill" id="rateFill"></div></div>
+      <div class="rate-ticks">
+        <span class="rate-tick" id="tick0">2.4 kW</span>
+        <span class="rate-tick" id="tick1">7.4 kW</span>
+        <span class="rate-tick" id="tick2">22 kW</span>
+        <span class="rate-tick" id="tick3">80 kW</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let chActiveIdx = -1, chAnimRaf = null, chAnimStart = null;
+const CH_ANIM_MS = 3000;
+
+const CHARGERS = [
+  { kw:2.4,  timeStr:'21 hrs',  speedPct:8,
+    info:'A standard 3-pin domestic socket delivers just 2.4 kW. Safe and convenient at home overnight, but impractical — taking <strong>21 hours</strong> for a full 50 kWh charge.' },
+  { kw:7.4,  timeStr:'7 hrs',   speedPct:28,
+    info:'A dedicated 7.4 kW AC wallbox is the most popular home charging solution. Around <strong>7 hours</strong> overnight — ideal for most daily driving needs.' },
+  { kw:22,   timeStr:'2h 30m',  speedPct:58,
+    info:'A 22 kW AC public charger cuts charge time to around <strong>2.5 hours</strong>. Found in car parks and retail locations. Note: not all EVs support 22 kW AC charging.' },
+  { kw:80,   timeStr:'40 mins', speedPct:100,
+    info:'DC rapid charging at 80 kW fills a 50 kWh battery in just <strong>40 minutes</strong>. Found at motorway service stations. Frequent use can affect long-term battery health.' },
+];
+
+const SEG_COLORS = ['#ef4444','#fb923c','#facc15','#86efac','#4ade80'];
+const SEG_IDS    = ['bseg1','bseg2','bseg3','bseg4','bseg5'];
+const BAR_COLORS = ['#ef4444','#fb923c','#facc15','#4ade80'];
+
+function selectCharger(idx) {
+  if (chActiveIdx === idx) return;
+  chActiveIdx = idx;
+  document.querySelectorAll('.charger-btn').forEach((b,i) => b.classList.toggle('active', i===idx));
+  document.querySelectorAll('.rate-tick').forEach((t,i)  => t.classList.toggle('on',     i===idx));
+
+  const c    = CHARGERS[idx];
+  const fill = document.getElementById('rateFill');
+  fill.style.background = `linear-gradient(90deg,#ef4444,${BAR_COLORS[idx]})`;
+  fill.style.boxShadow  = `0 0 8px ${BAR_COLORS[idx]}88`;
+  setTimeout(() => { fill.style.width = c.speedPct + '%'; }, 50);
+
+  const cn = document.getElementById('clockNum'), cl = document.getElementById('clockLbl');
+  if (cn) cn.textContent = c.timeStr;
+  if (cl) cl.textContent = 'to full';
+
+  const ring = document.getElementById('clockRing');
+  if (ring) { ring.setAttribute('stroke-dashoffset','125.7'); ring.setAttribute('stroke','var(--blue)'); }
+
+  const s = document.getElementById('cpStatus');
+  if (s) { s.style.opacity='0'; setTimeout(() => { s.innerHTML=c.info; s.style.opacity='1'; }, 280); }
+
+  cancelAnimationFrame(chAnimRaf);
+  resetBattery();
+  chAnimStart = null;
+  chAnimRaf = requestAnimationFrame(ts => tick(ts, idx));
+}
+
+function resetBattery() {
+  SEG_IDS.forEach(id => document.getElementById(id).setAttribute('fill','transparent'));
+  document.getElementById('pctNum').textContent  = '0';
+  document.getElementById('battPct').style.color = '#fff';
+  document.getElementById('kwhNum').textContent  = '0.0';
+  document.getElementById('kwhNum').style.color  = '';
+  document.getElementById('boltTxt').setAttribute('fill','rgba(255,255,255,0)');
+  const bar  = document.getElementById('cpBarFill');  if (bar)  bar.style.width = '0%';
+  const ring = document.getElementById('clockRing');
+  if (ring) { ring.setAttribute('stroke-dashoffset','125.7'); ring.setAttribute('stroke','var(--blue)'); }
+}
+
+function tick(ts, idx) {
+  if (!chAnimStart) chAnimStart = ts;
+  const t    = Math.min((ts - chAnimStart) / CH_ANIM_MS, 1);
+  const ease = 1 - Math.pow(1-t, 3);
+  const pct  = Math.round(ease * 100);
+  const col  = pct > 66 ? '#4ade80' : pct > 33 ? '#facc15' : '#ef4444';
+
+  document.getElementById('pctNum').textContent  = pct;
+  document.getElementById('kwhNum').textContent  = (ease * 50).toFixed(1);
+  document.getElementById('kwhNum').style.color  = col;
+  document.getElementById('battPct').style.color = col;
+
+  const segsLit = Math.ceil(ease * 5);
+  SEG_IDS.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (i < segsLit) {
+      const alpha = i === segsLit-1 ? Math.min(1, ease*5 - i) : 1;
+      el.setAttribute('fill', SEG_COLORS[i] + Math.round(alpha*255).toString(16).padStart(2,'0'));
+    } else {
+      el.setAttribute('fill','transparent');
+    }
+  });
+
+  const bar = document.getElementById('cpBarFill');
+  if (bar) bar.style.width = (ease * 100) + '%';
+
+  const ring = document.getElementById('clockRing');
+  if (ring) { ring.setAttribute('stroke-dashoffset',(125.7*(1-ease)).toFixed(1)); ring.setAttribute('stroke',col); }
+
+  document.getElementById('boltTxt').setAttribute('fill',
+    ease > 0.05 && ease < 0.97 ? 'rgba(255,255,255,0.22)' :
+    ease >= 0.97               ? 'rgba(74,222,128,0.5)'   : 'rgba(255,255,255,0)');
+
+  if (t < 1) chAnimRaf = requestAnimationFrame(ts2 => tick(ts2, idx));
+}
+</script>
+</body>
+</html>
